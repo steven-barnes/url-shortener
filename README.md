@@ -14,6 +14,9 @@ with a hash.
 The service only requires key-value storage, so I have chosen Redis. Redis is fast and supports atomic 
 set-if-not-present operations, which are used in my implementation. 
 
+As I have indicated, I am not a front-end developer. In order to save time, I have implemented the service using Play
+templates, rather straight HTML. Hopefully this is acceptable.
+
 ### Running the Service
 You must have Redis running locally.
 
