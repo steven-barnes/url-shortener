@@ -1,6 +1,6 @@
-##URL shortening service
+## URL shortening service
 
-###Design
+### Design
 The design doc does not state the requirements for the format of the shortened URL. I have based
 my implementation of off TinyURL.
 TinyURL seems to generate 8 character URL keys consisting of lowercase letters and numbers,
@@ -14,7 +14,7 @@ with a hash.
 The service only requires key-value storage, so I have chosen Redis. Redis is fast and supports atomic 
 set-if-not-present operations, which are used in my implementation. 
 
-###Running the Service
+### Running the Service
 You must have Redis running locally.
 
 Build and run the app with:
