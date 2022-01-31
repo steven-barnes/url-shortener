@@ -3,7 +3,8 @@
 # https://www.playframework.com/documentation/latest/ScalaRouting
 # ~~~~
 
-GET     /           controllers.UrlController.urlGet()
+GET     /           controllers.UrlController.index()
 
-GET     /url        controllers.UrlController.urlGet()
+GET     /:key       controllers.UrlController.urlGet(key)
+
 POST    /url        controllers.UrlController.urlPost()

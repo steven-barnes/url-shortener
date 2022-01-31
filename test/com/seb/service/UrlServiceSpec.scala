@@ -1,18 +1,15 @@
 package com.seb.service
 
-import com.github.sebruck.EmbeddedRedis
 import com.redis.RedisClient
 import org.mockito.Mockito.when
 import org.mockito.ArgumentMatchers.{eq => eqTo, _}
 import org.scalatest.{BeforeAndAfter, TryValues, fixture}
-import org.scalatest.Assertions._
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.funsuite.AnyFunSuite
 import org.scalatestplus.mockito.MockitoSugar
 import play.api.Configuration
 
 import java.net.MalformedURLException
-import scala.util.Try
 
 class TestKeyGen extends RandomKeyGen {
   var id = 0
@@ -34,8 +31,8 @@ class UrlServiceSpec extends AnyFunSuite with TryValues with ScalaFutures with M
 
   test("Shorten URL successfully") {
     val clientMock = mock[RedisClient]
-    when(clientMock.getset(eqTo("0"), any())(any(), any())).thenReturn(None)
-    when(clientMock.getset(eqTo("http://x.com"), any())(any(), any())).thenReturn(None)
+    when(clientMock.set(eqTo("0"), any(), any(), any())(any())).thenReturn(true)
+    when(clientMock.set(eqTo("http://x.com"), any(), any(), any())(any())).thenReturn(true)
     val factory = new RedisClientFactory {
       override def create(host: String, port: Int): RedisClient = clientMock
     }
@@ -44,16 +41,31 @@ class UrlServiceSpec extends AnyFunSuite with TryValues with ScalaFutures with M
     assert(r.futureValue == "http://localhost:9000/0")
   }
 
-  test("Shorten URL called twice returns first shortened URL") {
+  test("Shorten called twice for same URL, returns pre-existing shortened URL") {
     val clientMock = mock[RedisClient]
-    when(clientMock.getset(eqTo("0"), any())(any(), any())).thenReturn(None)
-    when(clientMock.getset[String](eqTo("http://x.com"), any())(any(), any())).thenReturn(Some("99"))
+    when(clientMock.set(eqTo("0"), any(), any(), any())(any())).thenReturn(true)
+    when(clientMock.set(eqTo("http://x.com"), any(), any(), any())(any())).thenReturn(false)
+    when(clientMock.get[String](eqTo("http://x.com"))(any(), any())).thenReturn(Some("99"))
     val factory = new RedisClientFactory {
       override def create(host: String, port: Int): RedisClient = clientMock
     }
     val service = new UrlService(config, ec, new TestKeyGen(), factory)
     val r = service.shorten("http://x.com")
     assert(r.futureValue == "http://localhost:9000/99")
+  }
+
+  test("Shorten URL successfully, after key collision") {
+    val clientMock = mock[RedisClient]
+    when(clientMock.set(eqTo("0"), any(), any(), any())(any())).thenReturn(false)
+    when(clientMock.get[String](eqTo("0"))(any(), any())).thenReturn(Some("https://google.com"))
+    when(clientMock.set(eqTo("1"), any(), any(), any())(any())).thenReturn(true)
+    when(clientMock.set(eqTo("http://x.com"), any(), any(), any())(any())).thenReturn(true)
+    val factory = new RedisClientFactory {
+      override def create(host: String, port: Int): RedisClient = clientMock
+    }
+    val service = new UrlService(config, ec, new TestKeyGen(), factory)
+    val r = service.shorten("http://x.com")
+    assert(r.futureValue == "http://localhost:9000/1")
   }
 
 }

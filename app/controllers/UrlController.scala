@@ -26,8 +26,17 @@ class UrlController @Inject()(
     )(UrlFormData.apply)(UrlFormData.unapply)
   )
 
-  def urlGet() = Action { implicit request: MessagesRequest[AnyContent] =>
+  def index() = Action { implicit request: MessagesRequest[AnyContent] =>
     Ok(views.html.url.form(urlForm))
+  }
+
+  def urlGet(key: String) = Action.async { implicit request: MessagesRequest[AnyContent] =>
+    urlService.get(key) transform {
+      case Success(Some(url)) =>
+        Success(Redirect(url))
+      case _ =>
+        Success(Redirect("/"))
+    }
   }
 
   def urlPost() = Action.async { implicit request: MessagesRequest[AnyContent] =>
@@ -40,13 +49,13 @@ class UrlController @Inject()(
         if (isValid(urlData.url)) {
           urlService.shorten(urlData.url) transform {
             case Success(url) =>
-              Success(Redirect(routes.UrlController.urlGet()).flashing("message" -> url))
+              Success(Redirect(routes.UrlController.index()).flashing("message" -> url))
             case Failure(ex) =>
-              Success(Redirect(routes.UrlController.urlGet()).flashing("message" -> s"Error: ${ex.getMessage}"))
+              Success(Redirect(routes.UrlController.index()).flashing("message" -> s"Error: ${ex.getMessage}"))
           }
         } else {
           Future {
-            Redirect(routes.UrlController.urlGet()).flashing("message" -> "Invalid URL")
+            Redirect(routes.UrlController.index()).flashing("message" -> "Invalid URL")
           }
         }
       }

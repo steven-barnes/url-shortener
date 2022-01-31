@@ -35,7 +35,6 @@ class UrlService @Inject()(
         } else key
       }
       val key = r.get // exception will be caught by Future block
-      println(s"result: $key")
       s"http://localhost:9000/$key"
     }
   }
@@ -65,20 +64,21 @@ class UrlService @Inject()(
     }
     else {
       val key = keyGen.generate
-      Try(setIfAbsent(key, url)) match {
-        case Success(Some(r)) if r != url =>
+      setIfAbsent(key, url) match {
+        case Some(r) if r != url =>
           retrySet(url, count - 1)
-        case Success(Some(r: String)) =>
+        case Some(r: String) =>
           // shortened URL already in data store, extremely unlikely scenario
           Success((true, r))
-        case Success(None) =>
+        case None =>
           Success((false, key))
-        case f@Failure(_)  =>
-          f.asInstanceOf[Try[(Boolean, String)]]
       }
     }
   }
 
+  // Return None, if the key was successfully set. If the key was present, this method
+  // will return the old value, instead of replacing it.
+  //
   // The Redis client does not yet support "SET NX GET", which would allow this to be
   // done as a single command
   //
@@ -94,10 +94,8 @@ class UrlService @Inject()(
   // In this step we check to see if the shortened URL is already present
   //
   def setLookupMapping(url: String, key: String): String = {
-    println(s"url=$url, key=$key")
     setIfAbsent(url, key) match {
       case Some(oldKey) =>
-        println(s"oldKey=$oldKey")
         // URL present, delete the redundant key
         client.del(key)
         oldKey
@@ -106,7 +104,11 @@ class UrlService @Inject()(
     }
   }
 
-  def get(key: String): Future[String] = ???
+  def get(key: String): Future[Option[String]] = {
+    Future {
+      client.get[String](key)
+    }
+  }
 
 }
 
